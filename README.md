@@ -107,25 +107,6 @@ Proje tek dosya merkezli ama fonksiyonlara ayrilmis bir yapi kullanir:
 
 Asagidaki sekans diyagrami, bir ceviri isteginin UI'dan modele kadar nasil aktigini gosterir:
 
-```mermaid
-sequenceDiagram
-    participant U as User
-    participant UI as TkinterUI
-    participant C as ask_ollama
-    participant O as OllamaServer
-    participant M as llama3
-
-    U->>UI: SnippetSec
-    UI-->>U: KodOnizlemeGuncelle
-    U->>UI: F8VeyaButon
-    UI->>C: ask_ollama(selected_code)
-    C->>O: POST /api/generate (model,prompt,stream=false)
-    O->>M: PromptuIsle
-    M-->>O: TurkceAciklama
-    O-->>C: JSON response
-    C-->>UI: AciklamaVeyaHata
-    UI-->>U: Cik
-
 ### Manuel yol (terminal)
 
 ```powershell
