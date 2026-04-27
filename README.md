@@ -1,121 +1,192 @@
-# AI Asistan Kampusu
+# AI Asistan (F8 Menu)
 
-<div align="center">
+Bu proje, secili metni `F8` ile alip Ollama uzerinden farkli islemler yapan bir masaustu yardimcisidir.  
+Kopyalanan metin; ceviri, gramer duzeltme, ozetleme, resmi dile cevirme gibi komutlarla aninda islenir.
 
-### Sekilli Sukullu Ogrenci Baslangic Rehberi
+```mermaid
+flowchart LR
+    user[User]
+    ui[TkinterUI]
+    data[SnippetDataset]
+    service[OllamaClient]
+    ollamaApi[OllamaAPI]
+    model[Llama3Model]
 
-`Local AI + Cloud AI = Daha hizli ogrenme`
+    user --> ui
+    data --> ui
+    ui --> service
+    service --> ollamaApi
+    ollamaApi --> model
+    model --> ollamaApi
+    ollamaApi --> service
+    service --> ui
+    ui --> user
+```
 
-[![Ollama](https://img.shields.io/badge/Ollama-Local%20LLM-111827?style=for-the-badge)](https://docs.ollama.com/quickstart)
-[![Gemini 3 Preview](https://img.shields.io/badge/Gemini%203-Preview-0f766e?style=for-the-badge)](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/start/get-started-with-gemini-3)
-[![Google Cloud](https://img.shields.io/badge/Google%20Cloud-Vertex%20AI-1a73e8?style=for-the-badge)](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/start/quickstart)
+## 1) Proje Ozeti
 
-</div>
+Uygulama su ihtiyaclari cozer:
+
+- Secili metni tek tusla (`F8`) hizli isleme
+- Ollama ile lokal AI destekli metin donusumu
+- Sonucu otomatik olarak panoya/aktif alana yapistirma
+- Belirli islemlerde sonucu ayri pencerede gosterme
+
+Desteklenen islem tipleri:
+
+- Gramer duzeltme
+- Ingilizceye/Turkceye ceviri
+- Madde madde ozet
+- Daha resmi yaziya donusturme
+- Python kodu uretme
+- Mail cevap taslagi
+- PS5 skor + yorum formati
+
+### Akis Semasi
+
+```mermaid
+flowchart TD
+    start[UygulamaBaslar]
+    load[SnippetlerYuklenir]
+    select[SnippetSecilir]
+    trigger[F8VeyaButon]
+    validate[KodBosMuKontrol]
+    wait[YanitBekleniyorMesaji]
+    request[OllamaIstegiGonder]
+    status[HTTPDurumKontrol]
+    parse[JSONParseEt]
+    hasText[ResponseDoluMu]
+    success[AciklamayiGosterVeSayaciArtir]
+    fail[HataMesajiGoster]
+    endNode[SonrakiIstegiBekle]
+
+    start --> load --> select --> trigger --> validate
+    validate -->|Hayir| fail --> endNode
+    validate -->|Evet| wait --> request --> status
+    status -->|2xx| parse --> hasText
+    hasText -->|Evet| success --> endNode
+    hasText -->|Hayir| fail --> endNode
+    status -->|4xx/5xx| fail --> endNode
+```
+
+## 2) Teknik Mimari
+
+Proje tek dosya merkezli ama fonksiyonlara ayrilmis bir yapi kullanir:
+
+- UI/etkilesim: `tkinter` (gizli root, popup menu, mesaj kutulari)
+- Global kisayol: `pynput` (`F8`)
+- Metin alma/yapistirma: `pyautogui` + `pyperclip`
+- Servis katmani: `ollama_cevap_al(...)` ile HTTP istekleri (`requests`)
+- Asenkron GUI guvenligi: `queue.Queue` + `root.after(...)`
+
+## 3) Calisma Akisi
+
+1. Kullanici herhangi bir uygulamada metin secer.
+2. `F8` ile menu acilir.
+3. Islem secilir.
+4. Secili metin prompt ile birlestirilir.
+5. Ollama API (`/api/generate`) cagrilir.
+6. Sonuc:
+   - Cogu komutta aktif alana otomatik yapistirilir.
+   - PS5 komutunda ayri bir sonuc penceresinde gosterilir.
+
+## 4) Kurulum ve Calistirma
+
+### Gereksinimler
+
+- Windows
+- Python 3.10+
+- Ollama kurulu ve calisir durumda
+- En az bir uygun model (ornek: `llama3-preview:latest`)
+
+### En kolay yol (onerilen)
+
+1. Bu klasorde `BASLAT.bat` dosyasini cift tikla calistir.
+2. Script gerekiyorsa `kurulum.bat` ile `.venv` ve paketleri otomatik kurar.
+3. Sonrasinda `main.pyw` acilir ve uygulama arka planda dinlemeye baslar.
+
+Asagidaki sekans diyagrami, bir ceviri isteginin UI'dan modele kadar nasil aktigini gosterir:
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant UI as TkinterUI
+    participant C as ask_ollama
+    participant O as OllamaServer
+    participant M as llama3
+
+    U->>UI: SnippetSec
+    UI-->>U: KodOnizlemeGuncelle
+    U->>UI: F8VeyaButon
+    UI->>C: ask_ollama(selected_code)
+    C->>O: POST /api/generate (model,prompt,stream=false)
+    O->>M: PromptuIsle
+    M-->>O: TurkceAciklama
+    O-->>C: JSON response
+    C-->>UI: AciklamaVeyaHata
+    UI-->>U: Cik
+
+### Manuel yol (terminal)
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+python .\main.pyw
+```
+
+### Ollama model kontrolu
+
+```powershell
+ollama list
+```
+
+Gerekirse model yukle:
+
+```powershell
+ollama pull llama3-preview:latest
+```
+
+## 5) Kullanim Rehberi
+
+1. Herhangi bir uygulamada metni sec.
+2. `F8` tusuna bas.
+3. Acilan menuden islemi sec.
+4. Sonucu aktif alanda veya popup pencerede gor.
+
+## 6) Hata Yonetimi ve Troubleshooting
+
+Yaygin durumlar:
+
+- Ollama baglanti hatasi: `http://localhost:11434` ayakta olmayabilir
+- Model bulunamadi: secili model cihazda kurulu degil
+- Bos secim: metin secmeden `F8` basildi
+
+Hizli kontrol:
+
+```powershell
+curl http://localhost:11434/api/tags
+```
+
+Port kontrol:
+
+```powershell
+netstat -ano | findstr 11434
+```
+
+## 7) Dosya Yapisi
 
 ```text
- ____  ____     _   _ _____ _   _ _  __      _    ____ ___ _
-|  _ \|  _ \   | | | |  ___| | | | |/ /     / \  / ___|_ _| |
-| | | | |_) |  | | | | |_  | | | | ' /     / _ \ \___ \| || |
-| |_| |  _ <   | |_| |  _| | |_| | . \    / ___ \ ___) | || |___
-|____/|_| \_\   \___/|_|    \___/|_|\_\  /_/   \_\____/___|_____|
-K   K  L      U   U  BBBB   EEEEE         H   H   OOO    SSSS          GGG   EEEEE  L      DDDD   IIIII  N   N           !
-K  K   L      U   U  B   B  E             H   H  O   O  S             G      E      L      D   D    I    NN  N           !
-KKK    L      U   U  BBBB   EEE           HHHHH  O   O   SSS          G  GG  EEE    L      D   D    I    N N N           !
-K  K   L      U   U  B   B  E             H   H  O   O      S         G   G  E      L      D   D    I    N  NN
-K   K  LLLLL   UUU   BBBB   EEEEE         H   H   OOO   SSSS           GGG   EEEEE  LLLLL  DDDD   IIIII  N   N           !
+.
+├── BASLAT.bat
+├── kurulum.bat
+├── main.pyw
+├── requirements.txt
+└── README.md
 ```
 
-> [!IMPORTANT]
-> Gemini 3 preview "indirilen bir program" degil, Google Cloud Vertex AI uzerinden API ile kullanilan bir model ailesidir.
+## 8) Notlar
 
-## 0) Ogrenci Icin Tek Adim
-
-1. Ollama'yi bir kez kur: https://docs.ollama.com/windows models kısmına gir https://ollama.com/library  ve gemini 3 preview cloud modelinini çalıştır yetki giriş gerekecek. ollama artık lokalinde bir LLM olarak sana hizmet vermeye hazır .
-
-2. Bu klasorde sadece `BASLAT.bat` calistir.
-3. Hepsi bu kadar.
-
-> [!IMPORTANT]
-> Ogrenci tarafinda ekstra komut gerekmez. `BASLAT.bat` gerekli durumda `kurulum.bat` dosyasini otomatik cagirir ve ortami kendi kurar.
-
-## 1) BASLAT Calisinca Ne Oluyor?
-
-1. `BASLAT.bat` önce `.venv` var mi kontrol eder.
-2. Yoksa `kurulum.bat` otomatik calisir; Python 3 kontrolu, `.venv` olusturma, `pip` guncelleme ve `requirements.txt` paket kurulumu yapilir.
-3. Sonra `main.pyw` arka planda acilir.
-4. Uygulama varsayilan olarak `gemma3:1b` modeliyle Ollama'ya istek atar.
-
-Ollama API varsayilan adresi: `http://localhost:11434`
-
-## 2) Google Cloud Gemini 3 Preview (Vertex AI)
-
-### Once gerekli olanlar
-- Google Cloud projesi
-- Billing acik olmali
-- Vertex AI API aktif olmali
-- `gcloud` CLI kurulu olmali
-
-### gcloud giris ve kimlik
-
-```powershell
-gcloud init
-gcloud auth application-default login
-```
-
-### Proje ve API ayari
-
-```powershell
-gcloud config set project YOUR_PROJECT_ID
-gcloud services enable aiplatform.googleapis.com
-```
-
-### Python SDK kurulumu
-
-```powershell
-pip install --upgrade google-genai
-```
-
-### Ortam degiskenleri (PowerShell)
-
-```powershell
-$env:GOOGLE_CLOUD_PROJECT="YOUR_PROJECT_ID"
-$env:GOOGLE_CLOUD_LOCATION="global"
-$env:GOOGLE_GENAI_USE_VERTEXAI="True"
-```
-
-### Ilk Gemini 3 Preview istegi
-
-```python
-from google import genai
-
-client = genai.Client()
-
-response = client.models.generate_content(
-    model="gemini-3-flash-preview",
-    contents="Merhaba! Bana 3 maddede Python'da for dongusunu anlat.",
-)
-
-print(response.text)
-```
-
-
-## 3) Mini Ogrenci Challenge (Opsiyonel)
-1. Terminalde su komutu yaz: `ollama run gemini-3-flash-preview`
-2. Sonra Ollama'da gecerli bir modelle sor: `ollama run gemma3:1b`
-3. Ayni soruyu Gemini 3 preview ile sor.
-4. Cevaplari hiz, detay ve dogruluk acisindan karsilastir.
-
-## 4) Hata Cozme Kisa Notlari
-- `403` alirsan: Billing, Vertex AI API ve IAM rol (`roles/aiplatform.user`) kontrol et.
-- `401` alirsan: `gcloud auth application-default login` komutunu yeniden calistir.
-- `ollama model not found` alirsan once su komutu calistir: `ollama run gemma3:1b`
-- `Model not found` alirsan: model ID'yi kontrol et (`gemini-3-flash-preview`, `gemini-3-pro-preview`, `gemini-3.1-pro-preview`).
-
-## Kaynaklar (Resmi)
-- Ollama Quickstart: https://docs.ollama.com/quickstart
-- Ollama Windows: https://docs.ollama.com/windows
-- Ollama Linux: https://docs.ollama.com/linux
-- Vertex AI Quickstart: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/start/quickstart
-- Gemini 3 Baslangic: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/start/get-started-with-gemini-3
-- Gemini 3 Pro Model: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-pro
-- Gemini 3 Flash Model: https://docs.cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/3-flash
+- Varsayilan API adresi: `http://localhost:11434/api/generate`
+- Varsayilan model adayi: `llama3-preview:latest`
+- Uygulama metni yerel makinede isler; cloud API cagrisi yapmaz (Ollama lokal ise)

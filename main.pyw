@@ -11,10 +11,10 @@ import queue
 
 # --- AYARLAR ---
 OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_ADI = "gemini-3-flash-preview:latest"  # Ana model (F8)
+MODEL_ADI = "llama3:latest"  # Ana model (F8)
 TEXT_MODEL_CANDIDATES = [
     MODEL_ADI,
-    "gemini-3-flash-preview:cloud",
+    "llama3-preview:cloud",
 ]
 
 KISAYOL_METIN = keyboard.Key.f8  # Metin secimi icin kisayol
@@ -26,26 +26,13 @@ gui_queue = queue.Queue()
 kisayol_basildi = False
 
 
-# --- MENÜ SEÇENEKLERİ VE PROMPT'LAR ---
+# --- MENÜ SEÇENEĞİ VE PROMPT ---
+# Uygulama sadece secili metni Turkce konusma diline cevirir.
 ISLEMLER = {
-    "📝 Gramer Düzelt": "Bu metni Türkçe yazım ve dil bilgisi kurallarına göre düzelt, resmi ve akıcı olsun. Sadece sonucu ver.",
-    "🇬🇧 İngilizceye Çevir": "Bu metni İngilizceye çevir. Sadece çeviriyi ver.",
-    "🇹🇷 Türkçeye Çevir": "Bu metni Türkçeye çevir. Sadece çeviriyi ver.",
-    "📑 Özetle (Madde Madde)": "Bu metni analiz et ve en önemli noktaları madde madde özetle.",
-    "💼 Daha Resmi Yap": "Bu metni kurumsal bir e-posta diline çevir, çok resmi olsun.",
-    "🐍 Python Koduna Çevir": "Bu metindeki isteği yerine getiren bir Python kodu yaz. Sadece kodu ver.",
-    "📧 Cevap Yaz (Mail)": "Bu gelen bir e-posta, buna kibar ve profesyonel bir cevap metni taslağı yaz.",
-    "🎮 PS5 Oyun Skor + Acımasız Yorum": (
-        "Seçili metni bir PS5 oyunu adı olarak ele al. Aşağıdaki formatta Türkçe cevap ver:\n"
-        "1) Oyun: <ad>\n"
-        "2) Topluluk Beğeni Skorları:\n"
-        "- Metacritic User Score: <değer veya 'bilgi yok'>\n"
-        "- OpenCritic / benzer eleştirmen ortalaması: <değer veya 'bilgi yok'>\n"
-        "- Oyuncu yorumu ortalaması (PS Store vb.): <değer veya 'bilgi yok'>\n"
-        "3) Hüküm: sadece 'IYI' veya 'KOTU'\n"
-        "4) Acımasız Yorum: 2-4 cümle, net ve sert.\n"
-        "Kurallar: Kesin bilmediğin puanı uydurma, onun yerine 'bilgi yok' yaz. "
-        "Yorumu skorlarla tutarlı kur."
+    "🗣️ Türkçe Konuşma Diline Çevir": (
+        "Aşağıdaki metni doğal, günlük Türkçe konuşma diline çevir. "
+        "Anlamı koru, gereksiz uzatma yapma. "
+        "Sadece çevrilmiş metni ver."
     ),
 }
 
@@ -154,8 +141,9 @@ def secili_metni_kopyala(max_deneme=4):
     return ""
 
 
-def pencere_modunda_gosterilsin_mi(komut_adi):
-    return "PS5 Oyun Skor" in komut_adi
+def pencere_modunda_gosterilsin_mi(_komut_adi):
+    # Sonucu her zaman pencerede de goster: kullanici ceviriyi net gorur.
+    return True
 
 
 def sonuc_penceresi_goster(baslik, icerik):
@@ -225,7 +213,7 @@ def sonuc_penceresi_goster(baslik, icerik):
 
 def islemi_yap(komut_adi, secili_metin):
     prompt_emri = ISLEMLER[komut_adi]
-    full_prompt = f"{prompt_emri}:\n\n'{secili_metin}'"
+    full_prompt = f"{prompt_emri}\n\nMetin:\n{secili_metin}"
 
     print(f"🤖 İşlem: {komut_adi}")
     print("⏳ Ollama ile işleniyor...")
@@ -239,16 +227,19 @@ def islemi_yap(komut_adi, secili_metin):
     if sonuc.startswith("'") and sonuc.endswith("'"):
         sonuc = sonuc[1:-1]
 
-    if pencere_modunda_gosterilsin_mi(komut_adi):
-        gui_queue.put((sonuc_penceresi_goster, (komut_adi, sonuc)))
-        print("âœ… SonuÃ§ ayrÄ± pencerede gÃ¶sterildi.")
-        return
-
+    # Her durumda once panoya kopyala; yapistirma basarisiz olsa bile sonuc kaybolmaz.
     time.sleep(0.2)
     pyperclip.copy(sonuc)
+
+    # Odak bazi uygulamalarda menu sonrasi kaybolabildigi icin yapistirma her zaman garanti degil.
+    # Yine de deneriz; ayrica sonucu pencerede gosteririz.
     time.sleep(0.1)
     pyautogui.hotkey("ctrl", "v")
-    print("✅ İşlem tamamlandı!")
+
+    if pencere_modunda_gosterilsin_mi(komut_adi):
+        gui_queue.put((sonuc_penceresi_goster, (komut_adi, sonuc)))
+
+    print("✅ İşlem tamamlandı! (Sonuç panoya kopyalandı)")
 
 
 def process_queue():
@@ -333,13 +324,13 @@ def on_release(key):
 
 if __name__ == "__main__":
     print("=" * 60)
-    print("🤖 AI Asistan - Metin İşleme")
+    print("🤖 AI Asistan - Turkce Konusma Diline Ceviri")
     print("=" * 60)
     aktif_text_model = get_available_text_model()
-    print(f"📦 Metin İşleme (F8): {aktif_text_model}")
+    print(f"📦 Konusma Dili Cevirisi (F8): {aktif_text_model}")
     print()
     print("🔧 Kullanım:")
-    print("   F8 - Metin sec ve AI islemleri yap")
+    print("   F8 - Metin sec ve Turkce konusma diline cevir")
     print()
     print("⚠️ Programı kapatmak için bu pencereyi kapatın veya Ctrl+C yapın.")
     print("=" * 60)
