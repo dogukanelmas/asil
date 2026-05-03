@@ -3,26 +3,6 @@
 Bu proje, secili metni `F8` ile alip Ollama uzerinden farkli islemler yapan bir masaustu yardimcisidir.  
 Kopyalanan metin; ceviri, gramer duzeltme, ozetleme, resmi dile cevirme gibi komutlarla aninda islenir.
 
-```mermaid
-flowchart LR
-    user[User]
-    ui[TkinterUI]
-    data[SnippetDataset]
-    service[OllamaClient]
-    ollamaApi[OllamaAPI]
-    model[Llama3Model]
-
-    user --> ui
-    data --> ui
-    ui --> service
-    service --> ollamaApi
-    ollamaApi --> model
-    model --> ollamaApi
-    ollamaApi --> service
-    service --> ui
-    ui --> user
-```
-
 ## 1) Proje Ozeti
 
 Uygulama su ihtiyaclari cozer:
@@ -41,6 +21,9 @@ Desteklenen islem tipleri:
 - Python kodu uretme
 - Mail cevap taslagi
 - PS5 skor + yorum formati
+
+![Alt text](ex.png)
+
 
 ### Akis Semasi
 
